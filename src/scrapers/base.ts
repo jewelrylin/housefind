@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import * as cheerio from 'cheerio';
-import { chromium, Browser, Page } from 'playwright';
+import type { Browser, Page } from 'playwright';
 import { HousingListing, SearchFilters, PlatformName } from '@/types';
 import { generateId } from '@/utils/formatters';
 
@@ -89,15 +89,18 @@ export abstract class BaseScraper {
    */
   protected async getBrowser(): Promise<Browser> {
     if (!BaseScraper.browserPromise) {
-      BaseScraper.browserPromise = chromium.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-        ],
-      }).catch((err) => {
+      BaseScraper.browserPromise = (async () => {
+        const { chromium } = await import('playwright');
+        return chromium.launch({
+          headless: true,
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+          ],
+        });
+      })().catch((err) => {
         console.error(`[Browser] Failed to launch Chromium:`, (err as Error).message);
         BaseScraper.browserPromise = null;
         throw err;

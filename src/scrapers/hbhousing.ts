@@ -1,7 +1,7 @@
 import { BaseScraper } from './base';
 import { HousingListing, SearchFilters, PlatformName, PropertyType } from '@/types';
 import * as cheerio from 'cheerio';
-import { Page } from 'playwright';
+import type { Page } from 'playwright';
 
 /**
  * 住商不動產爬蟲 (v3 — Nuxt 3 __NUXT_DATA__ 參考格式解析)
