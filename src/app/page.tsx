@@ -122,6 +122,10 @@ export default function Home() {
     setCostCalcListing(listing);
   }, []);
 
+  const handleShowSponsored = useCallback(() => {
+    handleSearch({ ...filters, hideSponsored: false });
+  }, [filters, handleSearch]);
+
   const listingsWithCoords = useMemo(() => {
     if (!result) return [];
     const withCoords = result.listings.filter(l => l.lat && l.lng);
@@ -277,6 +281,7 @@ export default function Home() {
                   isLoading={isLoading}
                   onSelectListing={handleSelectListing}
                   onCalculateCost={handleCalculateCost}
+                  onShowSponsored={handleShowSponsored}
                 />
               ) : (
                 <div className="space-y-4">

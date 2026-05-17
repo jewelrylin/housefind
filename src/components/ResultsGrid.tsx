@@ -8,9 +8,10 @@ interface ResultsGridProps {
   isLoading: boolean;
   onSelectListing?: (id: string) => void;
   onCalculateCost?: (listing: HousingListing) => void;
+  onShowSponsored?: () => void;
 }
 
-export function ResultsGrid({ result, isLoading, onSelectListing, onCalculateCost }: ResultsGridProps) {
+export function ResultsGrid({ result, isLoading, onSelectListing, onCalculateCost, onShowSponsored }: ResultsGridProps) {
   if (isLoading) {
     return (
       <div className="py-12">
@@ -44,6 +45,8 @@ export function ResultsGrid({ result, isLoading, onSelectListing, onCalculateCos
     const someErrored = erroredPlatforms.length > 0;
     const sponsoredOnlyFiltered = result.sponsoredCount > 0;
 
+    const onlySponsoredAvailable = sponsoredOnlyFiltered && result.filters.hideSponsored && !someErrored;
+
     let title = '沒有找到符合的物件';
     let hint = '請嘗試調整搜尋條件，例如放寬價格範圍、坪數限制或選擇不同區域';
     if (allErrored) {
@@ -52,9 +55,9 @@ export function ResultsGrid({ result, isLoading, onSelectListing, onCalculateCos
     } else if (someErrored) {
       title = '部分平台無法取得資料';
       hint = `${erroredPlatforms.map(p => p.name).join('、')} 連線失敗。其他平台沒有符合條件的物件，請嘗試放寬搜尋條件。`;
-    } else if (sponsoredOnlyFiltered && result.filters.hideSponsored) {
+    } else if (onlySponsoredAvailable) {
       title = '只剩贊助廣告物件';
-      hint = `已過濾 ${result.sponsoredCount} 筆贊助廣告。取消「隱藏置頂廣告」即可查看，或調整搜尋條件以找到更多一般物件。`;
+      hint = `符合條件的 ${result.sponsoredCount} 筆物件全為贊助廣告（已依您的設定隱藏）。`;
     }
 
     return (
@@ -66,6 +69,18 @@ export function ResultsGrid({ result, isLoading, onSelectListing, onCalculateCos
         </div>
         <h3 className="text-lg font-semibold text-gray-900 mb-1">{title}</h3>
         <p className="text-sm text-gray-500 max-w-md">{hint}</p>
+        {onlySponsoredAvailable && onShowSponsored && (
+          <button
+            onClick={onShowSponsored}
+            className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium shadow-sm hover:bg-blue-700 transition-colors"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            顯示這 {result.sponsoredCount} 筆贊助物件
+          </button>
+        )}
       </div>
     );
   }
