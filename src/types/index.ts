@@ -96,6 +96,7 @@ export interface SearchResult {
   sponsoredCount: number;
   searchTime: number;          // ms
   filters: SearchFilters;
+  mockFilteredCount?: number;  // 被過濾掉的模擬資料數量
 }
 
 /** 預設搜尋過濾條件 */

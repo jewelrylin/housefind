@@ -148,6 +148,13 @@ export class SearchAggregator {
 
     const totalBeforeFilter = allListings.length;
 
+    // 過濾掉模擬資料（在 Netlify 等無瀏覽器環境中，爬蟲會回退到假資料）
+    const mockFilteredCount = allListings.filter(l => isMockListing(l)).length;
+    if (mockFilteredCount > 0) {
+      console.log(`[Aggregator] Filtered out ${mockFilteredCount} mock listings`);
+    }
+    allListings = allListings.filter(l => !isMockListing(l));
+
     // 過濾所有房源
     allListings = allListings.filter((listing) => {
       if (mergedFilters.hideSponsored && listing.isSponsored) return false;
@@ -167,6 +174,7 @@ export class SearchAggregator {
       sponsoredCount: totalSponsored,
       searchTime,
       filters: mergedFilters,
+      mockFilteredCount,
     };
   }
 }
