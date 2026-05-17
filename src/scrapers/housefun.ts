@@ -28,7 +28,7 @@ export class HousefunScraper extends BaseScraper {
       console.error(`[好房網] Browser scraping error:`, err);
     }
 
-    return this.getMockData(filters);
+    return [];
   }
 
   /** 嘗試直接 HTTP 請求多個可能的 URL 路徑 */
@@ -124,7 +124,12 @@ export class HousefunScraper extends BaseScraper {
         const bathMatch = layoutText.match(/(\d+)\s*衛/);
 
         const link = $el.find('a[href]').first().attr('href') || $el.attr('href') || '';
-        const fullUrl = link.startsWith('http') ? link : `${this.baseUrl}${link}`;
+        // 處理三種網址型式：完整網址、protocol-relative (//host/path)、相對路徑
+        const fullUrl = link.startsWith('http')
+          ? link
+          : link.startsWith('//')
+          ? `https:${link}`
+          : `${this.baseUrl}${link}`;
         const imgUrl = $el.find('img').first().attr('data-src') || $el.find('img').first().attr('data-original') || $el.find('img').first().attr('src') || '';
 
         const tags: string[] = [];
@@ -133,7 +138,13 @@ export class HousefunScraper extends BaseScraper {
           if (tagText) tags.push(tagText);
         });
 
-        if (title || priceText) {
+        // 必須有真實物件連結及實際資料
+        const isValidUrl = /^https?:\/\//.test(fullUrl)
+          && !fullUrl.includes('javascript:')
+          && /(house|buy|rent|detail|item)\//i.test(fullUrl);
+        const hasRealData = price > 0 || size > 0;
+
+        if (title && isValidUrl && hasRealData) {
           const { city, district } = this.extractLocation(locationText);
           listings.push(this.createListing({
             index: index++,

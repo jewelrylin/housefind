@@ -50,8 +50,8 @@ export class Platform591Scraper extends BaseScraper {
     ]).catch(() => [] as HousingListing[]);
     if (apiListings.length > 0) return apiListings;
 
-    // 全部失敗，回退到模擬資料
-    return this.getMockData(filters);
+    // 全部失敗，回傳空陣列（不再使用模擬資料以避免誤導使用者）
+    return [];
   }
 
   /**

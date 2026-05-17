@@ -37,7 +37,7 @@ export class SinyiScraper extends BaseScraper {
       // 如果 Next.js 解析失敗，回退到 HTML 解析
       return this.parseListings(html, filters);
     } catch {
-      return this.getMockData(filters);
+      return [];
     }
   }
 

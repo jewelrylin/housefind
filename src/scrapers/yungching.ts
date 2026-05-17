@@ -28,7 +28,7 @@ export class YungchingScraper extends BaseScraper {
       console.error(`[永慶房屋] Browser scraping error:`, err);
     }
 
-    return this.getMockData(filters);
+    return [];
   }
 
   /**
@@ -238,7 +238,8 @@ export class YungchingScraper extends BaseScraper {
     let index = 0;
 
     // 永慶房屋 SPA 渲染後的列表元素
-    $('[class*="item"], [class*="card"], [class*="listItem"], [class*="productItem"]').each((_, el) => {
+    // 用較嚴格的 selector，避免抓到 nav menu / footer / sidebar
+    $('[class*="listItem"], [class*="productItem"], [class*="houseItem"], [class*="searchItem"]').each((_, el) => {
       const $el = $(el);
       const isSponsored = $el.find('[class*="top"], [class*="vip"], [class*="ad"]').length > 0
         || $el.text().includes('置頂');
@@ -258,7 +259,13 @@ export class YungchingScraper extends BaseScraper {
       const fullUrl = link.startsWith('http') ? link : `${this.baseUrl}${link}`;
       const imgUrl = $el.find('img').first().attr('src') || '';
 
-      if (title || priceText) {
+      // 必須是真實的房源連結（非 javascript:、非首頁、要有 price 或 size）
+      const isValidUrl = /^https?:\/\//.test(fullUrl)
+        && !fullUrl.includes('javascript:')
+        && /\/(buy|rent|house|detail|sell)\//i.test(fullUrl);
+      const hasRealData = price > 0 || size > 0;
+
+      if (title && isValidUrl && hasRealData) {
         const { city, district } = this.extractLocation(locationText);
         listings.push(this.createListing({
           index: index++,

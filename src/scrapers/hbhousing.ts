@@ -69,9 +69,9 @@ export class HBHousingScraper extends BaseScraper {
       console.error(`[住商不動產] Playwright error:`, (err as Error).message);
     }
 
-    // --- 備援: 模擬資料 ---
-    console.log(`[住商不動產] All strategies failed, returning mock data`);
-    return this.getMockData(filters);
+    // --- 全部策略失敗：回傳空陣列（不再使用模擬資料） ---
+    console.log(`[住商不動產] All strategies failed`);
+    return [];
   }
 
   // ===== Nuxt 3 __NUXT_DATA__ Payload 解析 =====

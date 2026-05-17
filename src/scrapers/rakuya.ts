@@ -20,7 +20,7 @@ export class RakuyaScraper extends BaseScraper {
       console.error(`[樂屋網] Browser scraping error:`, err);
     }
 
-    return this.getMockData(filters);
+    return [];
   }
 
   private async tryBrowserScraping(filters: SearchFilters): Promise<HousingListing[]> {
@@ -61,7 +61,13 @@ export class RakuyaScraper extends BaseScraper {
       const fullUrl = link.startsWith('http') ? link : `${this.baseUrl}${link}`;
       const imgUrl = $el.find('img').first().attr('src') || '';
 
-      if (title || priceText) {
+      // 必須是真實的物件詳細頁連結，並有實際價格或坪數
+      const isValidUrl = /^https?:\/\//.test(fullUrl)
+        && !fullUrl.includes('javascript:')
+        && /\/(detail|house|item)\//i.test(fullUrl);
+      const hasRealData = price > 0 || size > 0;
+
+      if (title && isValidUrl && hasRealData) {
         const { city, district } = this.extractLocation(locationText);
         listings.push(this.createListing({
           index: index++,

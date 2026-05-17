@@ -246,16 +246,16 @@ export default function Home() {
             </div>
           )}
 
-          {/* 模擬資料提示 */}
-          {result && result.mockFilteredCount && result.mockFilteredCount > 0 && result.listings.length === 0 && (
+          {/* 所有平台皆無回應時的提示 */}
+          {result && result.listings.length === 0 && result.platforms.every(p => p.resultsCount === 0) && (
             <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 flex items-start gap-3">
               <svg className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
               </svg>
               <div className="flex-1">
-                <p className="text-sm font-medium text-amber-800">無法取得即時房源資料</p>
+                <p className="text-sm font-medium text-amber-800">找不到符合條件的房源</p>
                 <p className="text-xs text-amber-600 mt-1">
-                  目前無法從房仲平台取得即時資料，請直接前往各平台網站查詢。
+                  目前各房仲平台沒有符合您搜尋條件的物件，或部分平台連線逾時。您也可以直接前往各平台網站查詢。
                 </p>
                 <div className="flex flex-wrap gap-2 mt-2">
                   <a href="https://www.591.com.tw" target="_blank" rel="noopener noreferrer" className="text-xs px-2.5 py-1 rounded-lg bg-white text-amber-700 ring-1 ring-amber-300 hover:bg-amber-100 transition-colors">591 房屋交易</a>
