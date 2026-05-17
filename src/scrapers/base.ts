@@ -97,6 +97,10 @@ export abstract class BaseScraper {
           '--disable-dev-shm-usage',
           '--disable-gpu',
         ],
+      }).catch((err) => {
+        console.error(`[Browser] Failed to launch Chromium:`, (err as Error).message);
+        BaseScraper.browserPromise = null;
+        throw err;
       });
     }
     return BaseScraper.browserPromise;

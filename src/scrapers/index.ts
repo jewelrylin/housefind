@@ -11,7 +11,7 @@ import { HBHousingScraper } from './hbhousing';
 export { TAIWAN_DISTRICTS };
 
 /** 每平台搜尋逾時（毫秒） */
-const SCRAPER_TIMEOUT = 25_000;
+const SCRAPER_TIMEOUT = 8_000;
 
 /** 已知可回傳真實資料的平台 */
 const KNOWN_REAL_PLATFORMS = ['信義房屋', '永慶房屋', '好房網'];
