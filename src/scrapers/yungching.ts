@@ -36,37 +36,39 @@ export class YungchingScraper extends BaseScraper {
    * 永慶使用 Next.js，可使用 /buy 和 /rent 路徑
    */
   private async tryAPIScraping(filters: SearchFilters): Promise<HousingListing[]> {
-    // 嘗試多個 URL 路徑
+    // 平行嘗試多個 URL 路徑（先回傳成功的那一個）
     const paths = [
       { type: filters.listingType === 'rent' ? 'rent' : 'buy', params: `?city=${encodeURIComponent(filters.city || '台北市')}` },
       { type: 'sale', params: '' },
       { type: 'buy', params: '' },
     ];
 
-    for (const path of paths) {
-      try {
-        const url = `${this.baseUrl}/${path.type}${path.params}`;
-        const html = await this.fetch(url, {
-          Accept: 'text/html,application/xhtml+xml,*/*',
-        });
+    const tasks = paths.map(async (path) => {
+      const url = `${this.baseUrl}/${path.type}${path.params}`;
+      const html = await this.fetch(url, {
+        Accept: 'text/html,application/xhtml+xml,*/*',
+      });
 
-        // 嘗試從 Next.js __NEXT_DATA__ 解析
-        const nextListings = this.parseNextJSData(html, filters);
-        if (nextListings.length > 0) {
-          console.log(`[永慶房屋] Next.js data at /${path.type} returned ${nextListings.length} listings`);
-          return nextListings;
-        }
+      const nextListings = this.parseNextJSData(html, filters);
+      if (nextListings.length > 0) {
+        console.log(`[永慶房屋] Next.js data at /${path.type} returned ${nextListings.length} listings`);
+        return nextListings;
+      }
 
-        // 嘗試從 HTML 解析
-        const htmlListings = this.parseListings(html, filters);
-        if (htmlListings.length > 0) {
-          console.log(`[永慶房屋] HTML parse at /${path.type} returned ${htmlListings.length} listings`);
-          return htmlListings;
-        }
-      } catch {}
+      const htmlListings = this.parseListings(html, filters);
+      if (htmlListings.length > 0) {
+        console.log(`[永慶房屋] HTML parse at /${path.type} returned ${htmlListings.length} listings`);
+        return htmlListings;
+      }
+
+      throw new Error(`[永慶房屋] /${path.type} no listings`);
+    });
+
+    try {
+      return await Promise.any(tasks);
+    } catch {
+      return [];
     }
-
-    return [];
   }
 
   /**
@@ -198,23 +200,16 @@ export class YungchingScraper extends BaseScraper {
   }
 
   private async tryBrowserScraping(filters: SearchFilters): Promise<HousingListing[]> {
-    // 嘗試多個 URL 路徑
-    const pathVariants = [
-      `${this.baseUrl}/${filters.listingType === 'rent' ? 'rent' : 'buy'}/list`,
-      `${this.baseUrl}/${filters.listingType === 'rent' ? 'rent' : 'buy'}?city=${encodeURIComponent(filters.city || '台北市')}`,
-      `${this.baseUrl}/${filters.listingType === 'rent' ? 'rent' : 'buy'}`,
-      `${this.baseUrl}/search?type=${filters.listingType === 'rent' ? 'rent' : 'buy'}&city=${encodeURIComponent(filters.city || '')}`,
-    ];
-
-    for (const url of pathVariants) {
-      try {
-        const html = await this.fetchWithBrowser(url, '[class*="item"], [class*="card"]');
-        const listings = this.parseListings(html, filters);
-        if (listings.length > 0) return listings;
-      } catch {}
+    // 永慶實際房源頁面位於 buy.yungching.com.tw / rent.yungching.com.tw
+    // 使用真實 subdomain 並等待真實 listing card class 出現
+    const sub = filters.listingType === 'rent' ? 'rent' : 'buy';
+    const url = `https://${sub}.yungching.com.tw/list`;
+    try {
+      const html = await this.fetchWithBrowser(url, '.yc-ng-buy-house-card:not(.loading)');
+      return this.parseListings(html, filters);
+    } catch {
+      return [];
     }
-
-    return [];
   }
 
   /** 判斷房屋類型 */

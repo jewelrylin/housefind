@@ -31,7 +31,7 @@ export class HousefunScraper extends BaseScraper {
     return [];
   }
 
-  /** 嘗試直接 HTTP 請求多個可能的 URL 路徑 */
+  /** 平行嘗試多個可能的 URL 路徑（先回傳成功的那一個） */
   private async tryHTTPScraping(filters: SearchFilters): Promise<HousingListing[]> {
     const urls = [
       `${this.baseUrl}/search/sale/`,
@@ -43,22 +43,23 @@ export class HousefunScraper extends BaseScraper {
       `${this.baseUrl}/search?type=${filters.listingType === 'rent' ? 'rent' : 'buy'}&city=${encodeURIComponent(filters.city || '')}`,
     ];
 
-    for (const url of urls) {
-      try {
-        const html = await this.fetch(url, {
-          Accept: 'text/html,application/xhtml+xml,*/*',
-        });
+    const tasks = urls.map(async (url) => {
+      const html = await this.fetch(url, {
+        Accept: 'text/html,application/xhtml+xml,*/*',
+      });
+      const listings = this.parseListings(html, filters);
+      if (listings.length > 0) {
+        console.log(`[好房網] HTTP parse at ${url} returned ${listings.length} listings`);
+        return listings;
+      }
+      throw new Error(`[好房網] ${url} empty`);
+    });
 
-        // 嘗試從 HTML 解析
-        const listings = this.parseListings(html, filters);
-        if (listings.length > 0) {
-          console.log(`[好房網] HTTP parse at ${url} returned ${listings.length} listings`);
-          return listings;
-        }
-      } catch {}
+    try {
+      return await Promise.any(tasks);
+    } catch {
+      return [];
     }
-
-    return [];
   }
 
   private async tryBrowserScraping(filters: SearchFilters): Promise<HousingListing[]> {
@@ -114,7 +115,11 @@ export class HousefunScraper extends BaseScraper {
         const title = $el.find('[class*="title"], [class*="name"], h3, h4').first().text().trim()
           || $el.attr('title') || '';
         const priceText = $el.find('[class*="price"], [class*="money"], [class*="cost"]').text().trim();
-        const price = this.parseNumber(priceText);
+        // 售屋價格已以「萬」為單位顯示 (e.g. "2,980萬")，不能再把萬 × 10000
+        const priceInWan = priceText.match(/([0-9,]+(?:\.[0-9]+)?)\s*萬/);
+        const price = priceInWan
+          ? parseFloat(priceInWan[1].replace(/,/g, ''))
+          : this.parseNumber(priceText);
         const locationText = $el.find('[class*="address"], [class*="location"], [class*="areaName"]').text().trim();
         const sizeText = $el.find('[class*="area"], [class*="ping"], [class*="size"]').text().trim();
         const size = this.parseNumber(sizeText);

@@ -20,6 +20,30 @@ export class Platform591Scraper extends BaseScraper {
   private saleBaseUrl = 'https://sale.591.com.tw';
   public enabled = true;
 
+  /**
+   * 591 sale 與 rent 的搜尋 URL 結構不同：
+   *   sale: https://sale.591.com.tw/?regionid=1&shType=list&firstRow=0
+   *   rent: https://rent.591.com.tw/list?region=1
+   */
+  private buildSearchUrl(filters: SearchFilters): string {
+    const isRent = filters.listingType === 'rent';
+    const base = isRent ? this.baseUrl : this.saleBaseUrl;
+    const region = filters.city ? this.getRegionId(filters.city) : '1';
+
+    let url: string;
+    if (isRent) {
+      url = `${base}/list?region=${region}`;
+    } else {
+      url = `${base}/?regionid=${region}&shType=list&firstRow=0`;
+    }
+    if (filters.minPrice > 0 || filters.maxPrice > 0) {
+      url += `&price=${filters.minPrice || ''}-${filters.maxPrice || ''}`;
+    }
+    if (filters.rooms > 0) url += `&room=${filters.rooms}`;
+    if (filters.keyword) url += `&keyword=${encodeURIComponent(filters.keyword)}`;
+    return url;
+  }
+
   async search(filters: SearchFilters): Promise<HousingListing[]> {
     // 策略1：從 HTML 中的 Nuxt SSR 資料提取（最快、無須 Playwright，避開瀏覽器競爭）
     try {
@@ -64,15 +88,7 @@ export class Platform591Scraper extends BaseScraper {
    * 此方式完全避開 Playwright 瀏覽器競爭問題，僅需 ~3-4 秒。
    */
   private async tryNuxtFromHTML(filters: SearchFilters): Promise<HousingListing[]> {
-    const base = filters.listingType === 'rent' ? this.baseUrl : this.saleBaseUrl;
-    const region = filters.city ? this.getRegionId(filters.city) : '1';
-
-    let searchUrl = `${base}/list?region=${region}`;
-    if (filters.minPrice > 0 || filters.maxPrice > 0) {
-      searchUrl += `&price=${filters.minPrice || ''}-${filters.maxPrice || ''}`;
-    }
-    if (filters.rooms > 0) searchUrl += `&room=${filters.rooms}`;
-    if (filters.keyword) searchUrl += `&keyword=${encodeURIComponent(filters.keyword)}`;
+    const searchUrl = this.buildSearchUrl(filters);
 
     // 1. 使用 axios 直接抓取 HTML（比 Playwright 快數倍、無瀏覽器競爭）
     const response = await this.client.get(searchUrl, {
@@ -220,15 +236,7 @@ export class Platform591Scraper extends BaseScraper {
    * 注意：在並行搜尋時 Playwright 可能有資源競爭問題
    */
   private async tryNuxtExtraction(filters: SearchFilters): Promise<HousingListing[]> {
-    const base = filters.listingType === 'rent' ? this.baseUrl : this.saleBaseUrl;
-    const region = filters.city ? this.getRegionId(filters.city) : '1';
-
-    let searchUrl = `${base}/list?region=${region}`;
-    if (filters.minPrice > 0 || filters.maxPrice > 0) {
-      searchUrl += `&price=${filters.minPrice || ''}-${filters.maxPrice || ''}`;
-    }
-    if (filters.rooms > 0) searchUrl += `&room=${filters.rooms}`;
-    if (filters.keyword) searchUrl += `&keyword=${encodeURIComponent(filters.keyword)}`;
+    const searchUrl = this.buildSearchUrl(filters);
 
     const browser = await this.getBrowser();
     const context = await browser.newContext({
@@ -381,8 +389,16 @@ export class Platform591Scraper extends BaseScraper {
         const isSponsored = item.is_top || item.is_vip || item.is_ad || item.preferred === 1 ||
           tags.some(t => t.includes('置頂') || t.includes('廣告'));
 
-        // 連結：591 的 url 已是完整網址
-        const url = item.url || (item.id ? `https://rent.591.com.tw/${item.id}` : '');
+        // 連結：sale 與 rent 的詳細頁網址不同
+        //   sale: https://sale.591.com.tw/home/house/detail/2/<houseid>.html
+        //   rent: https://rent.591.com.tw/<id>
+        const itemId = item.id || item.houseid || item.post_id || item.houseId || item.detail_id;
+        let url = item.url || item.shareUrl || '';
+        if (!url && itemId) {
+          url = filters.listingType === 'rent'
+            ? `https://rent.591.com.tw/${itemId}`
+            : `https://sale.591.com.tw/home/house/detail/2/${itemId}.html`;
+        }
 
         listings.push(this.createListing({
           index,
@@ -648,15 +664,8 @@ export class Platform591Scraper extends BaseScraper {
    * 使用 Playwright 攔截 591 的 XHR API 回應
    */
   private async tryApiInterception(filters: SearchFilters): Promise<HousingListing[]> {
+    const searchUrl = this.buildSearchUrl(filters);
     const base = filters.listingType === 'rent' ? this.baseUrl : this.saleBaseUrl;
-    const region = filters.city ? this.getRegionId(filters.city) : '1';
-
-    let searchUrl = `${base}/list?region=${region}`;
-    if (filters.minPrice > 0 || filters.maxPrice > 0) {
-      searchUrl += `&price=${filters.minPrice || ''}-${filters.maxPrice || ''}`;
-    }
-    if (filters.rooms > 0) searchUrl += `&room=${filters.rooms}`;
-    if (filters.keyword) searchUrl += `&keyword=${encodeURIComponent(filters.keyword)}`;
 
     const apiPatterns = [
       '/home/search/rsList',
@@ -733,15 +742,7 @@ export class Platform591Scraper extends BaseScraper {
 
   /** 使用 Playwright 瀏覽器自動化獲取資料 */
   private async tryBrowserScraping(filters: SearchFilters): Promise<HousingListing[]> {
-    const base = filters.listingType === 'rent' ? this.baseUrl : this.saleBaseUrl;
-    const region = filters.city ? this.getRegionId(filters.city) : '1';
-
-    let searchUrl = `${base}/list?region=${region}`;
-    if (filters.minPrice > 0 || filters.maxPrice > 0) {
-      searchUrl += `&price=${filters.minPrice || ''}-${filters.maxPrice || ''}`;
-    }
-    if (filters.rooms > 0) searchUrl += `&room=${filters.rooms}`;
-    if (filters.keyword) searchUrl += `&keyword=${encodeURIComponent(filters.keyword)}`;
+    const searchUrl = this.buildSearchUrl(filters);
 
     try {
       const html = await this.fetchWithBrowser(searchUrl, '[class*="listItem"], [class*="itemInfo"], .vue-list-rent-item');
