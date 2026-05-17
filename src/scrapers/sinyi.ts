@@ -251,7 +251,7 @@ export class SinyiScraper extends BaseScraper {
     if (filters.maxPrice > 0 && listing.price > filters.maxPrice) return false;
     if (filters.minSize > 0 && listing.size < filters.minSize) return false;
     if (filters.maxSize > 0 && listing.size > filters.maxSize) return false;
-    if (filters.rooms > 0 && listing.rooms !== filters.rooms) return false;
+    if (filters.rooms > 0 && listing.rooms < filters.rooms) return false;
     if (filters.city && listing.city !== filters.city) return false;
     if (filters.districts.length > 0 && !filters.districts.includes(listing.district)) return false;
     if (filters.propertyTypes.length > 0 && !filters.propertyTypes.includes(listing.propertyType)) return false;
