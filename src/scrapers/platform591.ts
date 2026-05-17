@@ -847,7 +847,7 @@ export class Platform591Scraper extends BaseScraper {
   private detectPropertyType(kind: string, title: string): PropertyType {
     const combined = `${kind} ${title}`;
     if (combined.includes('套房') || combined.includes('套')) return '套房';
-    if (combined.includes('透天')) return '透天';
+    if (combined.includes('透天')) return '整層住家';
     if (combined.includes('別墅')) return '別墅';
     if (combined.includes('公寓')) return '公寓';
     if (combined.includes('華廈')) return '華廈';

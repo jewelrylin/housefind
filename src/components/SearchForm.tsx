@@ -15,7 +15,7 @@ const LISTING_TYPES: { value: ListingType; label: string; icon: string }[] = [
   { value: 'rent', label: '租屋', icon: '🔑' },
 ];
 
-const PROPERTY_TYPES: PropertyType[] = ['公寓', '大樓', '華廈', '透天', '別墅', '店面', '套房'];
+const PROPERTY_TYPES: PropertyType[] = ['公寓', '大樓', '華廈', '透天', '整層住家', '別墅', '店面', '套房'];
 
 const PLATFORMS: { name: PlatformName; icon: string }[] = [
   { name: '591房屋交易', icon: '🏠' },

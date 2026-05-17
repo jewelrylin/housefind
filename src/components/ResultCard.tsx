@@ -15,6 +15,7 @@ const PROPERTY_TYPE_COLORS: Record<string, string> = {
   '大樓': 'bg-blue-100 text-blue-700',
   '華廈': 'bg-green-100 text-green-700',
   '透天': 'bg-purple-100 text-purple-700',
+  '整層住家': 'bg-violet-100 text-violet-700',
   '別墅': 'bg-pink-100 text-pink-700',
   '店面': 'bg-yellow-100 text-yellow-700',
   '套房': 'bg-cyan-100 text-cyan-700',
