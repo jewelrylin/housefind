@@ -11,17 +11,49 @@ export class SinyiScraper extends BaseScraper {
   protected baseUrl = 'https://www.sinyi.com.tw';
   public enabled = true;
 
+  /** 信義房屋的縣市英文路徑（rent 必須使用） */
+  private static readonly CITY_PATH: Record<string, string> = {
+    '台北市': 'Taipei',
+    '新北市': 'NewTaipei',
+    '桃園市': 'Taoyuan',
+    '台中市': 'Taichung',
+    '台南市': 'Tainan',
+    '高雄市': 'Kaohsiung',
+    '基隆市': 'Keelung',
+    '新竹市': 'Hsinchu',
+    '新竹縣': 'HsinchuCounty',
+    '苗栗縣': 'Miaoli',
+    '彰化縣': 'Changhua',
+    '南投縣': 'Nantou',
+    '雲林縣': 'Yunlin',
+    '嘉義市': 'Chiayi',
+    '嘉義縣': 'ChiayiCounty',
+    '屏東縣': 'Pingtung',
+    '宜蘭縣': 'Yilan',
+    '花蓮縣': 'Hualien',
+    '台東縣': 'Taitung',
+    '澎湖縣': 'Penghu',
+    '金門縣': 'Kinmen',
+    '連江縣': 'Lienchiang',
+  };
+
   async search(filters: SearchFilters): Promise<HousingListing[]> {
-    const typePath = filters.listingType === 'rent' ? 'rent' : 'buy';
+    const isRent = filters.listingType === 'rent';
+    let url: string;
 
-    // 建立搜尋 URL — 加入縣市與行政區參數以獲得精準結果
-    const params = new URLSearchParams();
-    if (filters.city) params.set('city', filters.city);
-    if (filters.districts.length > 0) params.set('district', filters.districts[0]);
-    if (filters.minPrice > 0) params.set('priceLow', String(filters.minPrice));
-    if (filters.maxPrice > 0) params.set('priceHigh', String(filters.maxPrice));
-
-    const url = `${this.baseUrl}/${typePath}/list?${params.toString()}`;
+    if (isRent) {
+      // 租屋頁面使用英文縣市路徑：/rent/list/<EnglishCity>-city/index.html
+      const cityPath = SinyiScraper.CITY_PATH[filters.city] || 'Taipei';
+      url = `${this.baseUrl}/rent/list/${cityPath}-city/index.html`;
+    } else {
+      // 售屋頁面接受中文 query：/buy/list?city=台北市
+      const params = new URLSearchParams();
+      if (filters.city) params.set('city', filters.city);
+      if (filters.districts.length > 0) params.set('district', filters.districts[0]);
+      if (filters.minPrice > 0) params.set('priceLow', String(filters.minPrice));
+      if (filters.maxPrice > 0) params.set('priceHigh', String(filters.maxPrice));
+      url = `${this.baseUrl}/buy/list?${params.toString()}`;
+    }
 
     try {
       const html = await this.fetch(url, {

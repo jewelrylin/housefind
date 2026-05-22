@@ -10,8 +10,13 @@ import { HBHousingScraper } from './hbhousing';
 
 export { TAIWAN_DISTRICTS };
 
-/** 每平台搜尋逾時（毫秒）— 部分爬蟲會嘗試多個 URL，axios 單次 timeout 為 8-10s */
-const SCRAPER_TIMEOUT = 12_000;
+/**
+ * 每平台搜尋逾時（毫秒）
+ * - 樂屋 Cloudflare JS challenge 通常需要 9-11s 才完成
+ * - 永慶 Angular SPA 渲染需要 3-5s
+ * - 信義/住商/591 axios 通常 < 4s
+ */
+const SCRAPER_TIMEOUT = 15_000;
 
 /** 已知可回傳真實資料的平台 */
 const KNOWN_REAL_PLATFORMS = ['信義房屋', '永慶房屋', '好房網'];

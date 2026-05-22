@@ -232,55 +232,86 @@ export class YungchingScraper extends BaseScraper {
     const listings: HousingListing[] = [];
     let index = 0;
 
-    // 永慶房屋 SPA 渲染後的列表元素
-    // 用較嚴格的 selector，避免抓到 nav menu / footer / sidebar
-    $('[class*="listItem"], [class*="productItem"], [class*="houseItem"], [class*="searchItem"]').each((_, el) => {
+    // 永慶 (Angular SPA) 真實渲染後的卡片結構：
+    //   .yc-ng-buy-house-card.card
+    //     .caseName       房名
+    //     .address        地址
+    //     .caseType       房屋類型 (e.g. 住宅大樓)
+    //     .regArea        坪數 (e.g. 建坪50.36)
+    //     .floor / .room  樓層 / 格局
+    //     .price          價格 (萬)
+    //     .tag-list .tag-item
+    //   a[href^="house/..."]   詳細頁
+    const sub = filters.listingType === 'rent' ? 'rent' : 'buy';
+    const detailBase = `https://${sub}.yungching.com.tw`;
+
+    $('.yc-ng-buy-house-card.card').each((_, el) => {
       const $el = $(el);
-      const isSponsored = $el.find('[class*="top"], [class*="vip"], [class*="ad"]').length > 0
-        || $el.text().includes('置頂');
 
-      const title = $el.find('[class*="title"], h3, [class*="name"]').first().text().trim();
-      const priceText = $el.find('[class*="price"], [class*="totalPrice"]').text().trim();
-      const price = this.parseNumber(priceText);
-      const locationText = $el.find('[class*="address"], [class*="location"]').text().trim();
-      const sizeText = $el.find('[class*="area"], [class*="ping"], [class*="size"]').text().trim();
-      const size = this.parseNumber(sizeText);
+      // 過濾仍在 loading 的 skeleton
+      if ($el.hasClass('loading')) return;
 
-      const layoutText = $el.find('[class*="layout"], [class*="room"]').text().trim();
+      const title = $el.find('.caseName').first().text().trim();
+      const address = $el.find('.address').first().text().trim();
+      const caseType = $el.find('.caseType').first().text().trim();
+      const regAreaText = $el.find('.regArea').first().text().trim();
+      const sizeMatch = regAreaText.match(/([0-9]+(?:\.[0-9]+)?)/);
+      const size = sizeMatch ? parseFloat(sizeMatch[1]) : 0;
+
+      const layoutText = $el.find('.room').first().text().trim();
       const roomMatch = layoutText.match(/(\d+)\s*房/);
+      const livingMatch = layoutText.match(/(\d+)\s*廳/);
       const bathMatch = layoutText.match(/(\d+)\s*衛/);
 
-      const link = $el.find('a[href]').first().attr('href') || '';
-      const fullUrl = link.startsWith('http') ? link : `${this.baseUrl}${link}`;
+      const floorText = $el.find('.floor').first().text().trim();
+
+      // 價格 (.price) e.g. "5,980萬" 或 "2,968"
+      const priceText = $el.find('.price').last().text().trim();
+      const priceNum = priceText.replace(/[,\s萬元月\/]/g, '');
+      const price = parseFloat(priceNum) || 0;
+
+      const tags: string[] = [];
+      $el.find('.tag-item').each((_, t) => {
+        const txt = $(t).text().trim();
+        if (txt) tags.push(txt);
+      });
+      const isSponsored = $el.hasClass('isTopPicks') || tags.some(t => t.includes('置頂') || t.includes('推薦'));
+
+      // 詳細頁連結：a[href="house/<id>"] (相對網址)
+      const link = $el.find('a[href]').first().attr('href')
+        || $el.closest('a').attr('href') || '';
+      const fullUrl = /^https?:\/\//.test(link)
+        ? link
+        : link
+        ? `${detailBase}/${link.replace(/^\//, '')}`
+        : '';
+
       const imgUrl = $el.find('img').first().attr('src') || '';
 
-      // 必須是真實的房源連結（非 javascript:、非首頁、要有 price 或 size）
-      const isValidUrl = /^https?:\/\//.test(fullUrl)
-        && !fullUrl.includes('javascript:')
-        && /\/(buy|rent|house|detail|sell)\//i.test(fullUrl);
-      const hasRealData = price > 0 || size > 0;
+      if (!title || price <= 0 || !fullUrl || !/\/house\//.test(fullUrl)) return;
 
-      if (title && isValidUrl && hasRealData) {
-        const { city, district } = this.extractLocation(locationText);
-        listings.push(this.createListing({
-          index: index++,
-          title: title || `永慶房源 ${index}`,
-          price: price || Math.floor(Math.random() * 2500 + 600),
-          priceUnit: filters.listingType === 'rent' ? '元/月' : '萬',
-          location: locationText || `${filters.city || '台北市'} 優質地段`,
-          city: city || filters.city || '台北市',
-          district,
-          propertyType: '大樓',
-          size: size || Math.floor(Math.random() * 45 + 18),
-          rooms: roomMatch ? parseInt(roomMatch[1]) : Math.floor(Math.random() * 3 + 1),
-          livingRooms: 1,
-          bathrooms: bathMatch ? parseInt(bathMatch[1]) : 1,
-          listingType: filters.listingType,
-          isSponsored,
-          url: fullUrl,
-          imageUrl: imgUrl || undefined,
-        }));
-      }
+      const { city, district } = this.extractLocation(address);
+      listings.push(this.createListing({
+        index: index++,
+        title,
+        price,
+        priceUnit: filters.listingType === 'rent' ? '元/月' : '萬',
+        location: address,
+        city: city || filters.city || '',
+        district,
+        address,
+        propertyType: this.detectPropertyType(caseType + ' ' + title),
+        size,
+        rooms: roomMatch ? parseInt(roomMatch[1]) : 0,
+        livingRooms: livingMatch ? parseInt(livingMatch[1]) : 1,
+        bathrooms: bathMatch ? parseInt(bathMatch[1]) : 1,
+        floor: floorText || undefined,
+        listingType: filters.listingType,
+        isSponsored,
+        url: fullUrl,
+        imageUrl: imgUrl || undefined,
+        tags: tags.length > 0 ? tags : undefined,
+      }));
     });
 
     return listings;

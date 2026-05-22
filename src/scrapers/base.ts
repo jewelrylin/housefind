@@ -109,8 +109,12 @@ export abstract class BaseScraper {
     return BaseScraper.browserPromise;
   }
 
-  /** 使用 Playwright 獲取頁面內容（處理 SPA / Cloudflare） */
-  protected async fetchWithBrowser(url: string, waitForSelector?: string): Promise<string> {
+  /**
+   * 使用 Playwright 獲取頁面內容（處理 SPA / Cloudflare）
+   * @param waitForSelector 等待此 selector 出現後再回傳 HTML
+   * @param waitTimeout selector 等待逾時 (ms)，預設 5000；Cloudflare 通常需要 ≥10000
+   */
+  protected async fetchWithBrowser(url: string, waitForSelector?: string, waitTimeout = 5000): Promise<string> {
     const browser = await this.getBrowser();
     const context = await browser.newContext({
       userAgent:
@@ -121,11 +125,12 @@ export abstract class BaseScraper {
 
     const page = await context.newPage();
     try {
-      await page.goto(url, { waitUntil: 'load', timeout: 15000 }).catch(() => {});
+      // domcontentloaded 比 load 更快，Cloudflare 挑戰時 load 可能永遠不觸發
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
 
       // 等待特定選擇器或等待載入完成
       if (waitForSelector) {
-        await page.waitForSelector(waitForSelector, { timeout: 5000 }).catch(() => {});
+        await page.waitForSelector(waitForSelector, { timeout: waitTimeout }).catch(() => {});
       } else {
         // 等待至少 1.5 秒讓 JavaScript 執行完成
         await page.waitForTimeout(1500);
